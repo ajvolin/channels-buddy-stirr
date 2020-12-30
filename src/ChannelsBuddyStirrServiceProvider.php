@@ -16,9 +16,14 @@ class ChannelsBuddyStirrServiceProvider extends ServiceProvider
      */
     public function boot(ChannelSourceProviders $sourceProvider)
     {
-        $sourceProvider->registerChannelSourceProvider('stirr', new ChannelSourceProvider(
-            StirrService::class,
-            'Stirr', true, false
-        ));
+        $sourceProvider->registerChannelSourceProvider(
+            new ChannelSourceProvider(
+                'stirr',
+                StirrService::class,
+                'Stirr',
+                true,
+                false
+            )
+        );
     }
 }
