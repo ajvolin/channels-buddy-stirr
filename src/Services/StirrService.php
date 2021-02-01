@@ -106,8 +106,7 @@ class StirrService implements ChannelSource
                     }
                 }
             }
-        })->sortBy('sortValue', SORT_NATURAL | SORT_FLAG_CASE)
-        ->keyBy('id');
+        })->keyBy('id');
         
         return new Channels($channels);
     }
