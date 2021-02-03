@@ -21,6 +21,8 @@ class StirrService implements ChannelSource
     protected $baseUrl;
     protected $baseStationUrl;
     protected $httpClient;
+    protected $defaultChannelArtUrl =
+        "https://komonews.com/resources/media2/4x3/full/1440/center/100/22bd9810-78d3-43d9-9425-ba4373465f58-full1x1_STIRR.Logo.BlackYellow01.png";
     private $sortValueNumber = 200;
 
     public function __construct()
@@ -219,26 +221,34 @@ class StirrService implements ChannelSource
             $logo = null;
         }
 
-        if (!is_null($mediaUrl = $channelMedia
+        if (!is_null($mediaUrls = $channelMedia
             ->rss
             ->channel
             ->item
             ->{'media:content'}
-            ->{'media:thumbnail'}[0]
-            ->url ?? null)) {
-            $channelArt = strtok(
-                $mediaUrl, '?'
-            );
-        } else {
-            if (!is_null($logo)) {
-                $channelArt = str_replace(
-                    "512/center/100",
-                    "1024/center/100",
-                    $logo
+            ->{'media:thumbnail'} ?? null)) {
+            
+            $channelArt = collect($mediaUrls)
+            ->filter(function($mediaUrl){
+                return ($mediaUrl->width == $mediaUrl->height ||
+                    $mediaUrl->width == "1920") &&
+                    strpos($mediaUrl->url, "EPG.png") === false;
+            })
+            ->transform(function($mediaUrl){
+                $mediaUrl->url = str_replace(
+                    "media2/1x1",
+                    "media2/4x3",
+                    str_replace(
+                        "center/90",
+                        "center/100",
+                        strtok($mediaUrl->url, '?')
+                    )
                 );
-            } else {
-                $channelArt = null;
-            }
+                return $mediaUrl;
+            })->sortBy([
+                ["width", "asc"],
+                ["height", "desc"]
+            ])->values()->first()->url ?? null;
         }
 
         if (trim($lineupChannel->{'display-name'}) == 'dco') {
@@ -257,7 +267,7 @@ class StirrService implements ChannelSource
                 'callSign'      => trim($lineupChannel->{'display-name'}),
                 'description'   => trim($channel->channel->description),
                 'logo'          => $logo,
-                'channelArt'    => $channelArt,
+                'channelArt'    => $channelArt ?? $this->defaultChannelArtUrl,
                 'category'      => trim($channel->channel->item->category),
                 'streamUrl'     => $channel->channel->item->link,
                 'sortValue'     => (string) $sortValue
