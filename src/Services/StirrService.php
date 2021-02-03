@@ -94,10 +94,20 @@ class StirrService implements ChannelSource
                             );
                             foreach($channels as $channel) {
                                 if (substr($channel->channel->title, 0, 3) != 'zzz') {
+                                    try {
+                                        $channelMediaStream = $this->httpClient->get(
+                                            sprintf('stirr/media/%s', $lineupChannel->id)
+                                        );
+                                        $channelMediaJson = $channelMediaStream->getBody()->getContents();
+                                        $channelMedia = json_decode($channelMediaJson);
+                                    } catch (RequestException $e) {
+                                        $channelMedia = null;
+                                    }
                                     yield $lineupChannel->id =>
                                         $this->generateChannel(
                                             $lineupChannel,
-                                            $channel
+                                            $channel,
+                                            $channelMedia
                                         );
                                 }
                             }
@@ -195,7 +205,7 @@ class StirrService implements ChannelSource
         return $airing;
     }
     
-    private function generateChannel(stdClass $lineupChannel, stdClass $channel): Channel
+    private function generateChannel(stdClass $lineupChannel, stdClass $channel, stdClass $channelMedia = null): Channel
     {
         if (isset($lineupChannel->icon->src)) {
             $logo = str_replace(
@@ -205,14 +215,30 @@ class StirrService implements ChannelSource
                     $lineupChannel->icon->src, '?'
                 )
             );
-            $channelArt = str_replace(
-                "512/center/100",
-                "1024/center/100",
-                $logo
-            );
         } else {
             $logo = null;
-            $channelArt = null;
+        }
+
+        if (!is_null($mediaUrl = $channelMedia
+            ->rss
+            ->channel
+            ->item
+            ->{'media:content'}
+            ->{'media:thumbnail'}[0]
+            ->url ?? null)) {
+            $channelArt = strtok(
+                $mediaUrl, '?'
+            );
+        } else {
+            if (!is_null($logo)) {
+                $channelArt = str_replace(
+                    "512/center/100",
+                    "1024/center/100",
+                    $logo
+                );
+            } else {
+                $channelArt = null;
+            }
         }
 
         if (trim($lineupChannel->{'display-name'}) == 'dco') {
